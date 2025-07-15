@@ -55,26 +55,16 @@ jobs:
             vendor/bin/phpunit
           fi
 
-      - name: Check for Coverage badge generation
-        if: steps.phpunit.outputs.generate-coverage-badge != 'true'
-        run: |
-          echo "Coverage badge generation skipped for PHP version ${{ matrix.php-versions }}"
-          exit 0
-
       - name: Generate coverage badge
         uses: timkrase/phpunit-coverage-badge@v1.2.1
+        if: steps.phpunit.outputs.generate-coverage-badge == 'true'
         with:
           coverage_badge_path: ./output/coverage.svg
           push_badge: false
           report: coverage.xml
 
-      - name: Update README badge URL for current repository
-        if: github.repository != 'angelov/phpunit-php-vcr'
-        run: |
-          # Update the README with the correct badge URL
-          sed -i 's|angelov/phpunit-php-vcr|${{ github.repository }}|g' README.md
-
       - name: Check badge file exists
+        if: steps.phpunit.outputs.generate-coverage-badge == 'true'
         id: check_badge
         run: |
           if [ -f "./output/coverage.svg" ]; then
@@ -86,7 +76,7 @@ jobs:
           fi
 
       - name: Deploy badge to image-data branch
-        if: steps.check_badge.outputs.badge_exists == 'true'
+        if: steps.phpunit.outputs.generate-coverage-badge == 'true' && steps.check_badge.outputs.badge_exists == 'true'
         uses: peaceiris/actions-gh-pages@v4
         with:
           publish_dir: ./output
