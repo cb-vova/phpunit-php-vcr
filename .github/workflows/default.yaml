@@ -16,7 +16,7 @@ jobs:
         php-versions: ['8.2', '8.3', '8.4']
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup PHP with PECL extension
         uses: shivammathur/setup-php@v2
@@ -26,7 +26,7 @@ jobs:
 
       - name: Cache Composer packages
         id: composer-cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: vendor
           key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
@@ -43,4 +43,26 @@ jobs:
         run: vendor/bin/phpstan analyse
 
       - name: Execute PHPUnit tests
-        run: vendor/bin/phpunit
+        run: |
+          if [ "${{ matrix.php-versions }}" = "8.3" ]; then
+            vendor/bin/phpunit --coverage-clover coverage.xml
+          else
+            vendor/bin/phpunit
+          fi
+
+      - name: Generate coverage badge
+        if: matrix.php-versions == '8.3'
+        uses: timkrase/phpunit-coverage-badge@v1.2.1
+        with:
+          coverage_badge_path: output/coverage.svg
+          push_badge: false
+
+      - name: Git push to image-data branch
+        if: matrix.php-versions == '8.3' && (github.ref == 'refs/heads/main' || github.event_name == 'pull_request')
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          publish_dir: ./output
+          publish_branch: image-data
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
