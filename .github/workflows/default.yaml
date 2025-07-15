@@ -95,8 +95,9 @@ jobs:
           user_email: 'github-actions[bot]@users.noreply.github.com'
 
       - name: Commit coverage badge to current branch (PR)
-        if: matrix.php-versions == '8.3' && github.event_name == 'pull_request'
+        if: matrix.php-versions == '8.3'
         run: |
+          echo "Event name: ${{ github.event_name }}"
           # Check if badge file exists
           if [ ! -f "output/coverage.svg" ]; then
             echo "Coverage badge file not found, skipping commit"
