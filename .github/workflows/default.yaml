@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php-versions: ['8.2', '8.3', '8.4']
+        php-versions: [ '8.2', '8.3', '8.4' ]
 
     steps:
       - uses: actions/checkout@v4
@@ -57,27 +57,30 @@ jobs:
           fi
 
       - name: Generate coverage badge
+        if: matrix.php-versions != '8.3'
+        run: |
+          echo "Coverage badge generation skipped for PHP version ${{ matrix.php-versions }}"
+          exit 0
+
+      - name: Generate coverage badge
         if: matrix.php-versions == '8.3'
         uses: timkrase/phpunit-coverage-badge@v1.2.1
         with:
-          coverage_badge_path: coverage.svg
+          coverage_badge_path: ./output/coverage.svg
           push_badge: false
           report: coverage.xml
 
       - name: Update README badge URL for current repository
-        if: matrix.php-versions == '8.3'
+        if: matrix.php-versions == '8.3' && github.repository != 'angelov/phpunit-php-vcr'
         run: |
           # Update the README with the correct badge URL
           sed -i 's|angelov/phpunit-php-vcr|${{ github.repository }}|g' README.md
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            sed -i 's|image-data/coverage.svg|${{ github.head_ref }}/coverage.svg|g' README.md
-          fi
 
-      - name: Check badge file exists (main branch)
-        if: matrix.php-versions == '8.3' && github.ref == 'refs/heads/main'
+      - name: Check badge file exists
+        if: matrix.php-versions == '8.3'
         id: check_badge
         run: |
-          if [ -f "coverage.svg" ]; then
+          if [ -f "./output/coverage.svg" ]; then
             echo "Coverage badge file found"
             echo "badge_exists=true" >> $GITHUB_OUTPUT
           else
@@ -86,27 +89,11 @@ jobs:
           fi
 
       - name: Deploy badge to image-data branch
-        if: matrix.php-versions == '8.3' && github.ref == 'refs/heads/main' && steps.check_badge.outputs.badge_exists == 'true'
-        uses: peaceiris/actions-gh-pages@v3
+        if: matrix.php-versions == '8.3' && steps.check_badge.outputs.badge_exists == 'true'
+        uses: peaceiris/actions-gh-pages@v4
         with:
           publish_dir: ./output
           publish_branch: image-data
           github_token: ${{ secrets.GITHUB_TOKEN }}
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
-
-      - name: Commit coverage badge to current branch (PR)
-        if: matrix.php-versions == '8.3'
-        run: |
-          echo "Event name: ${{ github.event_name }}"
-          # Check if badge file exists
-          if [ ! -f "coverage.svg" ]; then
-            echo "Coverage badge file not found, skipping commit"
-            exit 0
-          fi
-
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add coverage.svg
-          git commit -m "ci: Update coverage badge" || exit 0
-          git push
