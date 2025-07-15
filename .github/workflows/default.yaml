@@ -47,7 +47,7 @@ jobs:
       - name: Execute PHPUnit tests
         id: phpunit
         run: |
-          if [ "${{ matrix.php-versions }}" = "8.3" && "${{github.ref}}" == "refs/heads/main" && "${{github.event_name}}" == "push"  ]; then
+          if [[ "${{ matrix.php-versions }}" == "8.3" && "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" == "push" ]]; then
             vendor/bin/phpunit --coverage-clover coverage.xml
             echo "generate-coverage-badge=true" >> $GITHUB_OUTPUT
           else
