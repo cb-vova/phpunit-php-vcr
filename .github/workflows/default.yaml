@@ -60,7 +60,7 @@ jobs:
         if: matrix.php-versions == '8.3'
         uses: timkrase/phpunit-coverage-badge@v1.2.1
         with:
-          coverage_badge_path: output/coverage.svg
+          coverage_badge_path: coverage.svg
           push_badge: false
           report: coverage.xml
 
@@ -77,7 +77,8 @@ jobs:
         if: matrix.php-versions == '8.3' && github.ref == 'refs/heads/main'
         id: check_badge
         run: |
-          if [ -f "output/coverage.svg" ]; then
+          if [ -f "coverage.svg" ]; then
+            echo "Coverage badge file found"
             echo "badge_exists=true" >> $GITHUB_OUTPUT
           else
             echo "badge_exists=false" >> $GITHUB_OUTPUT
@@ -99,15 +100,13 @@ jobs:
         run: |
           echo "Event name: ${{ github.event_name }}"
           # Check if badge file exists
-          if [ ! -f "output/coverage.svg" ]; then
+          if [ ! -f "coverage.svg" ]; then
             echo "Coverage badge file not found, skipping commit"
             exit 0
           fi
 
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          # Copy coverage badge to root for PR commits
-          cp output/coverage.svg coverage.svg
           git add coverage.svg
           git commit -m "ci: Update coverage badge" || exit 0
           git push
