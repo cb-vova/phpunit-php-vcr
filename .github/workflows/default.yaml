@@ -19,10 +19,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: '0'  # Fetch all history for accurate coverage reporting
-          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
 
       - name: Setup PHP with PECL extension
         uses: shivammathur/setup-php@v2
@@ -49,21 +45,23 @@ jobs:
         run: vendor/bin/phpstan analyse
 
       - name: Execute PHPUnit tests
+        id: phpunit
         run: |
           if [ "${{ matrix.php-versions }}" = "8.3" ]; then
             vendor/bin/phpunit --coverage-clover coverage.xml
+            echo "generate-coverage-badge=true" >> $GITHUB_OUTPUT
           else
+            echo "generate-coverage-badge=false" >> $GITHUB_OUTPUT
             vendor/bin/phpunit
           fi
 
-      - name: Generate coverage badge
-        if: matrix.php-versions != '8.3'
+      - name: Check for Coverage badge generation
+        if: steps.phpunit.outputs.generate-coverage-badge != 'true'
         run: |
           echo "Coverage badge generation skipped for PHP version ${{ matrix.php-versions }}"
           exit 0
 
       - name: Generate coverage badge
-        if: matrix.php-versions == '8.3'
         uses: timkrase/phpunit-coverage-badge@v1.2.1
         with:
           coverage_badge_path: ./output/coverage.svg
@@ -71,13 +69,12 @@ jobs:
           report: coverage.xml
 
       - name: Update README badge URL for current repository
-        if: matrix.php-versions == '8.3' && github.repository != 'angelov/phpunit-php-vcr'
+        if: github.repository != 'angelov/phpunit-php-vcr'
         run: |
           # Update the README with the correct badge URL
           sed -i 's|angelov/phpunit-php-vcr|${{ github.repository }}|g' README.md
 
       - name: Check badge file exists
-        if: matrix.php-versions == '8.3'
         id: check_badge
         run: |
           if [ -f "./output/coverage.svg" ]; then
@@ -89,7 +86,7 @@ jobs:
           fi
 
       - name: Deploy badge to image-data branch
-        if: matrix.php-versions == '8.3' && steps.check_badge.outputs.badge_exists == 'true'
+        if: steps.check_badge.outputs.badge_exists == 'true'
         uses: peaceiris/actions-gh-pages@v4
         with:
           publish_dir: ./output
