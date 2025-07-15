@@ -9,14 +9,16 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     strategy:
       fail-fast: false
       matrix:
-        php-versions: ['8.2', '8.3', '8.4']
+        php-versions: [ '8.2', '8.3', '8.4' ]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup PHP with PECL extension
         uses: shivammathur/setup-php@v2
@@ -26,7 +28,7 @@ jobs:
 
       - name: Cache Composer packages
         id: composer-cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: vendor
           key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
@@ -43,4 +45,42 @@ jobs:
         run: vendor/bin/phpstan analyse
 
       - name: Execute PHPUnit tests
-        run: vendor/bin/phpunit
+        id: phpunit
+        run: |
+          if [[ "${{ matrix.php-versions }}" == "8.3" && "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" == "push" ]]; then
+            vendor/bin/phpunit --coverage-clover coverage.xml
+            echo "generate-coverage-badge=true" >> $GITHUB_OUTPUT
+          else
+            echo "generate-coverage-badge=false" >> $GITHUB_OUTPUT
+            vendor/bin/phpunit
+          fi
+
+      - name: Generate coverage badge
+        uses: timkrase/phpunit-coverage-badge@v1.2.1
+        if: steps.phpunit.outputs.generate-coverage-badge == 'true'
+        with:
+          coverage_badge_path: ./output/coverage.svg
+          push_badge: false
+          report: coverage.xml
+
+      - name: Check badge file exists
+        if: steps.phpunit.outputs.generate-coverage-badge == 'true'
+        id: check_badge
+        run: |
+          if [ -f "./output/coverage.svg" ]; then
+            echo "Coverage badge file found"
+            echo "badge_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "badge_exists=false" >> $GITHUB_OUTPUT
+            echo "Coverage badge file not found, skipping push to image-data branch"
+          fi
+
+      - name: Deploy badge to image-data branch
+        if: steps.phpunit.outputs.generate-coverage-badge == 'true' && steps.check_badge.outputs.badge_exists == 'true'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          publish_dir: ./output
+          publish_branch: image-data
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'

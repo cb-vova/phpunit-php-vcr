@@ -1,5 +1,7 @@
 # PHP-VCR integration for PHPUnit
 
+![Coverage](https://raw.githubusercontent.com/angelov/phpunit-php-vcr/image-data/coverage.svg)
+
 A library that allows you to easily use the PHP-VCR library in your PHPUnit tests.
 
 ## Requirements
