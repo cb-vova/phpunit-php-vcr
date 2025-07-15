@@ -53,7 +53,13 @@ jobs:
       - name: Update README badge URL for current repository
         if: matrix.php-versions == '8.3'
         run: |
-          sed -i 's|angelov/phpunit-php-vcr|${{ github.repository }}|g' README.md
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # For PRs, badge will be in the current branch root
+            sed -i 's|https://raw.githubusercontent.com/angelov/phpunit-php-vcr/image-data/coverage.svg|https://raw.githubusercontent.com/${{ github.repository }}/${{ github.head_ref }}/coverage.svg|g' README.md
+          else
+            # For main branch, badge will be in image-data branch
+            sed -i 's|angelov/phpunit-php-vcr|${{ github.repository }}|g' README.md
+          fi
 
       - name: Generate coverage badge
         if: matrix.php-versions == '8.3'
@@ -63,8 +69,8 @@ jobs:
           push_badge: false
           report: coverage.xml
 
-      - name: Git push to image-data branch
-        if: matrix.php-versions == '8.3' && (github.ref == 'refs/heads/main' || github.event_name == 'pull_request')
+      - name: Git push to image-data branch (main branch)
+        if: matrix.php-versions == '8.3' && github.ref == 'refs/heads/main'
         uses: peaceiris/actions-gh-pages@v3
         with:
           publish_dir: ./output
@@ -72,3 +78,14 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           user_name: 'github-actions[bot]'
           user_email: 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Commit coverage badge to current branch (PR)
+        if: matrix.php-versions == '8.3' && github.event_name == 'pull_request'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          # Move coverage badge to root for PR commits
+          mv output/coverage.svg coverage.svg
+          git add coverage.svg
+          git commit -m "ci: Update coverage badge" || exit 0
+          git push
