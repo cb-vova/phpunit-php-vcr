@@ -84,8 +84,8 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          # Move coverage badge to root for PR commits
-          mv output/coverage.svg coverage.svg
+          # Copy coverage badge to root for PR commits
+          cp output/coverage.svg coverage.svg
           git add coverage.svg
           git commit -m "ci: Update coverage badge" || exit 0
           git push
