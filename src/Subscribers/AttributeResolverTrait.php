@@ -47,8 +47,6 @@ trait AttributeResolverTrait
 
     private function parseMethod(string $test): TestMethodInfo
     {
-        $test = explode(" ", $test)[0];
-
         $methoDetails = explode("#", $test);
         return new TestMethodInfo(
             method: $methoDetails[0],

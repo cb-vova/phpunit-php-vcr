@@ -89,5 +89,6 @@ class AttributeDeclaredOnMethodsTest extends TestCase
     {
         yield 'example.com' => ["https://example.com"];
         yield 'example.org' => ["https://example.org"];
+        yield 'test case with spaces' => ["https://example.org"];
     }
 }
