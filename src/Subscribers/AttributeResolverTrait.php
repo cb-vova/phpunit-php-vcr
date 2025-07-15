@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Angelov\PHPUnitPHPVcr\Subscribers;
 
 use Angelov\PHPUnitPHPVcr\UseCassette;
+use Angelov\PHPUnitPHPVcr\Values\TestCaseParameters;
+use Angelov\PHPUnitPHPVcr\Values\TestMethodInfo;
 use Exception;
 use ReflectionMethod;
 
@@ -12,24 +14,19 @@ trait AttributeResolverTrait
 {
     private function needsRecording(string $test): bool
     {
-        return $this->getAttribute($test) !== null;
+        return $this->getTestCaseCassetteParameters($test) !== null;
     }
 
-    private function getCassetteName(string $test): ?string
+    private function getTestCaseCassetteParameters(string $test): ?TestCaseParameters
     {
-        return $this->getAttribute($test)?->name;
-    }
-
-    private function getAttribute(string $test): ?UseCassette
-    {
-        $test = $this->parseMethod($test);
+        $testMethodDetails = $this->parseMethod($test);
 
         try {
             if (PHP_VERSION_ID < 80300) {
-                $method = new ReflectionMethod($test);
+                $method = new ReflectionMethod($testMethodDetails->method);
             } else {
                 // @phpstan-ignore-next-line
-                $method = ReflectionMethod::createFromMethodName($test);
+                $method = ReflectionMethod::createFromMethodName($testMethodDetails->method);
             }
         } catch (Exception) {
             return null;
@@ -37,27 +34,35 @@ trait AttributeResolverTrait
 
         $attributes = $method->getAttributes(UseCassette::class);
 
-        if ($attributes) {
-            return $attributes[0]->newInstance();
+        $cassette = $attributes ? $attributes[0]->newInstance() : $this->getAttributeFromClass($testMethodDetails);
+        if ($cassette === null) {
+            return null;
         }
 
-        return $this->getAttributeFromClass($test);
+        return new TestCaseParameters(
+            cassette: $cassette,
+            case: $testMethodDetails->dataProvider,
+        );
     }
 
-    private function parseMethod(string $test): string
+    private function parseMethod(string $test): TestMethodInfo
     {
         $test = explode(" ", $test)[0];
 
-        return explode("#", $test)[0];
+        $methoDetails = explode("#", $test);
+        return new TestMethodInfo(
+            method: $methoDetails[0],
+            dataProvider: $methoDetails[1] ?? null
+        );
     }
 
-    private function getAttributeFromClass(string $test): ?UseCassette
+    private function getAttributeFromClass(TestMethodInfo $test): ?UseCassette
     {
         if (PHP_VERSION_ID < 80300) {
-            $method = new ReflectionMethod($test);
+            $method = new ReflectionMethod($test->method);
         } else {
             // @phpstan-ignore-next-line
-            $method = ReflectionMethod::createFromMethodName($test);
+            $method = ReflectionMethod::createFromMethodName($test->method);
         }
         $class = $method->getDeclaringClass();
         $attributes = $class->getAttributes(UseCassette::class);
